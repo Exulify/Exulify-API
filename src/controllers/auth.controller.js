@@ -18,7 +18,7 @@ export async function register(req, res) {
 
 
   try {
-    if (!username || !password || !nama || !nis || !kelas || !alamat || !no_hp) {
+    if (!username || !password || !nis ) {
       return res.status(400).json({ success: false, message: 'Semua field wajib diisi' });
     }
 
@@ -65,7 +65,7 @@ export async function login(req, res) {
 
   try {
     if (!username || !password) {
-      return res.status(400).json({ success: false, message: 'Username dan password wajib diisi' });
+      return res.status(400).json({ success: false, message: 'Email dan password wajib diisi' });
     }
 
     const [rows] = await db.query('SELECT * FROM user WHERE username = ?', [username]);
@@ -96,6 +96,19 @@ export async function login(req, res) {
 
   } catch (err) {
     console.error('Login error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+
+export const userSession = async (req, res) => {
+  try {
+    return res.json({
+      success: true,
+      data: req.user
+    })
+  } catch (err) {
+    console.error('Error getting user session:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
 }
