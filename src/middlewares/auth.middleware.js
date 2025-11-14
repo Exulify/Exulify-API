@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 
 export function verifyToken(req, res, next) {
-    const token = req.cookies.token;
+    const authHeader = req.headers.authorization;
+    const token = (req.cookies && req.cookies.token) || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null) || req.query.token;
 
     if (!token) {
         return res.status(401).json({ success: false, message: 'Tidak memiliki Akses!' });
