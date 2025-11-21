@@ -91,10 +91,9 @@ export async function login(req, res) {
 
     const token = generateToken({ id: user.id, role: user.role });
 
-    // set token as httpOnly cookie to support session endpoint
     res.cookie('token', token, {
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production'
     });
@@ -117,12 +116,49 @@ export async function login(req, res) {
 }
 
 
+
 export const userSession = async (req, res) => {
   try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Tidak memiliki Akses!' });
+    }
+
+    const [rows] = await db.query(`
+      SELECT 
+        u.id, 
+        u.username, 
+        u.role,
+        u.id_siswa,
+        u.id_pembina,
+        s.nama AS nama_siswa,
+        p.nama AS nama_pembina
+      FROM user u
+      LEFT JOIN siswa s ON u.id_siswa = s.id
+      LEFT JOIN pembina p ON u.id_pembina = p.id
+      WHERE u.id = ?
+    `, [userId]);
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+    }
+
+    const user = rows[0];
+    const name = user.nama_siswa || user.nama_pembina || user.username;
+
     return res.json({
       success: true,
-      data: req.user
-    })
+      data: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        name,
+        id_siswa: user.id_siswa,
+        id_pembina: user.id_pembina
+      }
+    });
+
   } catch (err) {
     console.error('Error getting user session:', err);
     return res.status(500).json({ success: false, message: err.message });

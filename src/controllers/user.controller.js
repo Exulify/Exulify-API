@@ -3,7 +3,21 @@ import bcrypt from 'bcrypt';
 
 export async function getAllUsers(req, res) {
   try {
-    const [users] = await db.query('SELECT * FROM user');
+    const [users] = await db.query(`
+      SELECT 
+        u.id AS id_user, 
+        u.username, 
+        u.role, 
+        u.id_siswa, 
+        s.nama AS nama_siswa, 
+        s.nis, 
+        s.kelas, 
+        s.alamat, 
+        s.no_hp
+      FROM users u
+      LEFT JOIN siswa s ON u.id_siswa = s.id
+    `);
+
     return res.status(200).json({ success: true, data: users });
   } catch (err) {
     console.error('Get users error:', err);

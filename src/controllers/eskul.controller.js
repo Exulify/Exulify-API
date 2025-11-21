@@ -91,7 +91,7 @@ export async function addPendaftar(req, res) {
 
     try {
         const [result] = await db.query(
-            'INSERT INTO pendaftar (id_siswa, id_ekskul, tanggal_daftar, status) VALUES (?, ?, ?, ?)',
+            'INSERT INTO pendaftaran (id_siswa, id_ekskul, tanggal_daftar, status) VALUES (?, ?, ?, ?)',
             [id_siswa, id_ekskul, tanggal_daftar, status]
         );
         if (result.affectedRows === 0) {
@@ -133,3 +133,99 @@ export async function  addKehadiran(req, res) {
     }
     return res.status(201).json({ success: true, message: 'Kehadiran berhasil ditambahkan' });
 }
+
+export async function getEskulBySiswa(req, res) {
+  const { id_siswa } = req.params;
+
+  try {
+    const [rows] = await db.query(`
+      SELECT p.*, e.nama AS nama_ekskul
+      FROM pendaftaran p
+      JOIN ekstrakurikuler e ON p.id_ekskul = e.id
+      WHERE p.id_siswa = ?
+    `, [id_siswa]);
+
+    return res.json({ success: true, data: rows });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+
+export const updateStreakKehadiran = async (req, res) => {
+  const { id_pendaftaran } = req.params;
+
+  try {
+    const [rows] = await db.query(
+      "SELECT * FROM streak_kehadiran WHERE id_pendaftaran = ?",
+      [id_pendaftaran]
+    );
+
+    const today = new Date().toISOString().split("T")[0];
+
+    if (rows.length === 0) {
+      await db.query(
+        `INSERT INTO streak_kehadiran 
+        (id_pendaftaran, current_streak, longest_streak, last_attendance) 
+        VALUES (?, 1, 1, ?)`,
+        [id_pendaftaran, today]
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Streak baru dibuat.",
+        data: {
+          current_streak: 1,
+          longest_streak: 1,
+          last_attendance: today,
+        },
+      });
+    }
+
+    const streak = rows[0];
+    const last = new Date(streak.last_attendance);
+    const now = new Date(today);
+
+    const diffDays = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+
+    let newCurrent = streak.current_streak;
+
+    if (diffDays === 1) {
+      newCurrent += 1;
+    } else if (diffDays > 1) {
+      // Reset streak
+      newCurrent = 1;
+    } else if (diffDays === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "Hari ini sudah diabsen.",
+        data: streak,
+      });
+    }
+
+    const newLongest = Math.max(streak.longest_streak, newCurrent);
+
+    await db.query(
+      `UPDATE streak_kehadiran 
+       SET current_streak = ?, longest_streak = ?, last_attendance = ?
+       WHERE id_pendaftaran = ?`,
+      [newCurrent, newLongest, today, id_pendaftaran]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Streak diperbarui.",
+      data: {
+        current_streak: newCurrent,
+        longest_streak: newLongest,
+        last_attendance: today,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Gagal update streak.",
+      error: err.message,
+    });
+  }
+};
