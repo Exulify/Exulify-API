@@ -113,26 +113,48 @@ export async function addPendaftar(req, res) {
     }
 }
 
-export async function  addKehadiran(req, res) {
-    const { id_pendaftar, tanggal, keterangan } = req.body
-    if (!id_pendaftar || !tanggal || !keterangan) {
-        return res.status(400).json({ success: false, message: 'Semua field wajib diisi' });
+export async function addKehadiran(req, res) {
+  const { id_pendaftaran, tanggal, keterangan } = req.body;
+
+  if (!id_pendaftaran || !tanggal || !keterangan) {
+    return res.status(400).json({ success: false, message: 'Semua field wajib diisi' });
+  }
+
+  try {
+    const [cekPendaftaran] = await db.query(
+      'SELECT id FROM pendaftaran WHERE id = ?',
+      [id_pendaftaran]
+    );
+
+    if (cekPendaftaran.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pendaftar tidak ditemukan'
+      });
     }
 
-    try {
-        const [result] = await db.query(
-            'INSERT INTO kehadiran (id_pendaftar, tanggal, keterangan) VALUES (?, ?, ?)',
-            [id_pendaftar, tanggal, keterangan]
-        ) 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ success: false, message: 'Pendaftar tidak ditemukan' });
-        }
-    } catch (err) {
-        console.error('Error menambahkan kehadiran:', err);
-        return res.status(500).json({ success: false, message: err.message });
-    }
-    return res.status(201).json({ success: true, message: 'Kehadiran berhasil ditambahkan' });
+    const [result] = await db.query(
+      'INSERT INTO kehadiran (id_pendaftaran, tanggal, keterangan) VALUES (?, ?, ?)',
+      [id_pendaftaran, tanggal, keterangan]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Kehadiran berhasil ditambahkan',
+      data: {
+        id: result.insertId,
+        id_pendaftaran,
+        tanggal,
+        keterangan
+      }
+    });
+
+  } catch (err) {
+    console.error('Error menambahkan kehadiran:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
 }
+
 
 export async function getEskulBySiswa(req, res) {
   const { id_siswa } = req.params;
@@ -193,7 +215,6 @@ export const updateStreakKehadiran = async (req, res) => {
     if (diffDays === 1) {
       newCurrent += 1;
     } else if (diffDays > 1) {
-      // Reset streak
       newCurrent = 1;
     } else if (diffDays === 0) {
       return res.status(200).json({
