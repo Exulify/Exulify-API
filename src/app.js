@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import eskulRoutes from "./routes/eskul.routes.js";
+import kehadiranRoutes from "./routes/kehadiran.routes.js";
 import cookieParser from "cookie-parser";
 
 dotenv.config();
@@ -21,5 +22,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/eskul", eskulRoutes);
+app.use("/api/kehadiran", kehadiranRoutes);
 
 export default app;

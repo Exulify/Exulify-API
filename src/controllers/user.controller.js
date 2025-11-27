@@ -23,6 +23,64 @@ export async function getAllUsers(req, res) {
   }
 }
 
+// Get kehadiran data for pembina dashboard
+export async function getKehadiranForPembina(req, res) {
+  try {
+    const [rows] = await db.query(`
+      SELECT  
+        k.id AS kehadiran_id,  
+        s.nama AS siswa_nama,  
+        e.nama AS ekskul_nama,  
+        k.tanggal,  
+        k.keterangan
+      FROM kehadiran k
+      JOIN pendaftaran p ON k.id_pendaftaran = p.id
+      JOIN siswa s ON p.id_siswa = s.id
+      JOIN ekstrakurikuler e ON p.id_ekskul = e.id
+      ORDER BY k.tanggal DESC, s.nama ASC
+      LIMIT 0, 25;
+    `);
+    return res.status(200).json({ success: true, data: rows });
+  } catch (err) {
+    console.error('Get kehadiran for pembina error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+// Export kehadiran data as PDF for pembina dashboard
+export async function exportKehadiranPdf(req, res) {
+  try {
+    const [rows] = await db.query(`
+      SELECT  
+        k.id AS kehadiran_id,  
+        s.nama AS siswa_nama,  
+        e.nama AS ekskul_nama,  
+        k.tanggal,  
+        k.keterangan
+      FROM kehadiran k
+      JOIN pendaftaran p ON k.id_pendaftaran = p.id
+      JOIN siswa s ON p.id_siswa = s.id
+      JOIN ekstrakurikuler e ON p.id_ekskul = e.id
+      ORDER BY k.tanggal DESC, s.nama ASC
+      LIMIT 0, 25;
+    `);
+    const doc = new PDFDocument();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="kehadiran.pdf"');
+    doc.pipe(res);
+    doc.fontSize(16).text('Daftar Kehadiran', { align: 'center' });
+    doc.moveDown();
+    rows.forEach((row, idx) => {
+      doc.fontSize(12).text(
+        `${idx + 1}. ${row.siswa_nama} | ${row.eksul_nama} | ${row.tanggal} | ${row.keterangan}`
+      );
+    });
+    doc.end();
+  } catch (err) {
+    console.error('Export kehadiran PDF error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
 export async function getUserByRole(req, res) {
   const { role } = req.params;
   try {
